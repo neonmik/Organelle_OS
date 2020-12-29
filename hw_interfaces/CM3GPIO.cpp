@@ -42,12 +42,12 @@
 #define AMP_ENABLE 17         
 #define PWR_STATUS 16           // battery or power adapter 
 
-#define AUX_LED_RED_OFF digitalWrite(LEDR,HIGH);
-#define AUX_LED_RED_ON digitalWrite(LEDR,LOW);
-#define AUX_LED_GREEN_OFF digitalWrite(LEDG,HIGH);
-#define AUX_LED_GREEN_ON digitalWrite(LEDG,LOW);
-#define AUX_LED_BLUE_OFF digitalWrite(LEDB,HIGH);
-#define AUX_LED_BLUE_ON digitalWrite(LEDB,LOW);
+#define AUX_LED_RED_OFF digitalWrite(LEDR,LOW);
+#define AUX_LED_RED_ON digitalWrite(LEDR,HIGH);
+#define AUX_LED_GREEN_OFF digitalWrite(LEDG,LOW);
+#define AUX_LED_GREEN_ON digitalWrite(LEDG,HIGH);
+#define AUX_LED_BLUE_OFF digitalWrite(LEDB,LOW);
+#define AUX_LED_BLUE_ON digitalWrite(LEDB,HIGH);
 
 #define BATTERY_BAR_5 4.8
 #define BATTERY_BAR_4 4.7
@@ -55,7 +55,11 @@
 #define BATTERY_BAR_2 4.43
 #define BATTERY_BAR_1 4.29
 #define BATTERY_BAR_0 4.15
-#define LOW_BATTERY_SHUTDOWN_THRESHOLD 4.0
+#define LOW_BATTERY_SHUTDOWN_THRESHOLD 3.3
+
+#define ENCODER_BUTTON 25
+#define ENCODER_DT 12
+#define ENCODER_CLK 26
 
 // OLED init bytes
 static unsigned char oled_initcode[] = {
@@ -149,6 +153,14 @@ void CM3GPIO::init(){
     pullUpDnControl(PWR_STATUS, PUD_OFF);
     pwrStatus = digitalRead(PWR_STATUS);
 
+    // GPIO for enconder
+    pinMode(ENCODER_BUTTON, INPUT);
+    pullUpDnControl(ENCODER_BUTTON, PUD_DOWN);
+    pinMode(ENCODER_DT, INPUT);
+    pullUpDnControl(ENCODER_DT, PUD_UP);
+    pinMode(ENCODER_CLK, INPUT);
+    pullUpDnControl(ENCODER_CLK, PUD_UP);
+
     // keys
     keyStatesLast = 0;
     clearFlags();
@@ -203,7 +215,7 @@ void CM3GPIO::pollKnobs(){
     adcs[3] = adcRead(3);
     adcs[4] = adcRead(4);
     adcs[5] = adcRead(5);
-    adcs[6] = adcRead(7);
+    adcs[6] = 5.0; //adcRead(7);
 
     // also check the pwr status pin
     pwrStatus = digitalRead(PWR_STATUS);
@@ -409,7 +421,8 @@ void CM3GPIO::getEncoder(void){
 	static uint8_t press_count = 0;
 	static uint8_t release_count = 0;
 
-	button = (pinValues >> 4) & 0x1;
+	button = digitalRead(ENCODER_BUTTON);
+
 	if (button == PRESS) {
 		press_count++;
 		release_count = 0;
@@ -433,8 +446,12 @@ void CM3GPIO::getEncoder(void){
 	}
 
 	// turning
-	encoder = (pinValues >> 5) & 0x3;
-	
+
+    if (digitalRead(ENCODER_DT))
+	encoder = 1;
+    if (digitalRead(ENCODER_CLK))
+	encoder = 2;
+
     if (encoder != encoder_last) {
         if (encoder_last == 0) {
 	    if (encoder == 2){
